@@ -277,8 +277,6 @@ class Prediction{
             double timed =time-init_time;
             if (timed >10 &&s<1)
             {
-               
-               // recov();
                 s++;
             }
             for(int i=0;i<pcl_rawcloud->points.size();i++)
@@ -318,11 +316,142 @@ class Prediction{
             pcl::toROSMsg(*pcl_cloud, pointcloud2);
             pointcloud2.header.stamp=ros::Time::now();
             pointcloud2.header.frame_id="velodyne";
-            pub_PointCloud.publish(pointcloud2);
-
-
+            pub_PointCloud.publish(pointcloud2);  
                    
         }
+      
+        void pubwheel_path()
+        {
+            geometry_msgs::PoseStamped left_front_pose,right_front_pose;
+
+
+            left_front_pose.header.stamp=ros::Time::now();
+            right_front_pose.header.stamp=ros::Time::now();
+
+            left_front_pose.header.frame_id="velodyne";
+            right_front_pose.header.frame_id="velodyne";
+
+            left_front_pose.pose.position.x=left_front.x;
+            left_front_pose.pose.position.y=left_front.y;
+            right_front_pose.pose.position.x=right_front.x;
+            right_front_pose.pose.position.y=right_front.y;
+
+            left_front_path.header.frame_id="velodyne";
+            right_front_path.header.frame_id="velodyne";
+
+            left_front_path.header.stamp=ros::Time::now();
+            right_front_path.header.stamp=ros::Time::now();
+            
+            left_front_path.poses.emplace_back(left_front_pose);
+            right_front_path.poses.emplace_back(right_front_pose);
+
+            pub_left_front_path.publish(left_front_path);
+            pub_right_front_path.publish(right_front_path);
+
+        }
+      
+        void pubpredpath(vector<vector<double> >ret_l,vector<vector<double> >ret_r)
+        {
+            pred_left_front_path.header.frame_id="velodyne";
+            pred_right_front_path.header.frame_id="velodyne";
+
+            pred_left_front_path.header.stamp=ros::Time::now();
+            pred_right_front_path.header.stamp=ros::Time::now();
+
+            geometry_msgs::PoseStamped pred_left_front_pose,pred_right_front_pose;
+
+            pred_left_front_pose.header.frame_id="velodyne";
+            pred_right_front_pose.header.frame_id="velodyne";
+
+            pred_left_front_pose.header.stamp=ros::Time::now();
+            pred_right_front_pose.header.stamp=ros::Time::now();
+
+            for(int i=0;i<ret_l.size();i++)
+            {
+                pred_left_front_pose.pose.position.x=ret_l[i][0];
+                pred_left_front_pose.pose.position.y=ret_l[i][1];
+
+                pred_right_front_pose.pose.position.x=ret_r[i][0];
+                pred_right_front_pose.pose.position.y=ret_r[i][1];
+                
+                pred_left_front_path.poses.emplace_back(pred_left_front_pose);
+                pred_right_front_path.poses.emplace_back(pred_right_front_pose);
+            }
+                pub_pred_left_front_path.publish(pred_left_front_path);
+                pub_pred_right_front_path.publish(pred_right_front_path);
+
+                pred_left_front_path.poses.clear();
+                pred_right_front_path.poses.clear();
+
+        }
+        
+        void wheelpose()
+        {
+            car.x=pose.Easting-init_pose.x;
+            car.y=pose.Northing-init_pose.y;
+            car.z=pose.altitude-init_pose.z;
+
+            left_front.x=(L/2)*cos(pose.Heading)-(T/2)*sin(pose.Heading)+car.x;
+            left_front.y=(L/2)*sin(pose.Heading)+(T/2)*cos(pose.Heading)+car.y;
+
+            left_rear.x=(-L/2)*cos(pose.Heading)-(T/2)*sin(pose.Heading)+car.x;
+            left_rear.y=(-L/2)*sin(pose.Heading)+(T/2)*cos(pose.Heading)+car.y;
+
+            right_front.x=(L/2)*cos(pose.Heading)-(-T/2)*sin(pose.Heading)+car.x;
+            right_front.y=(L/2)*sin(pose.Heading)+(-T/2)*cos(pose.Heading)+car.y;
+
+            right_rear.x=(-L/2)*cos(pose.Heading)-(-T/2)*sin(pose.Heading)+car.x;
+            right_rear.y=(-L/2)*sin(pose.Heading)+(-T/2)*cos(pose.Heading)+car.y;
+
+        }
+      
+        void dispwheel()
+        {
+            int a,b;
+            a=0;
+            b=0;
+            visualization_msgs::Marker lf_marker,rf_marker;
+            visualization_msgs::MarkerArray lf_markers,rf_markers;
+            lf_marker.header.stamp=ros::Time::now();
+            lf_marker.header.frame_id="velodyne";
+            lf_marker.type=visualization_msgs::Marker::CYLINDER;
+            lf_marker.action = visualization_msgs::Marker::ADD;
+
+            lf_marker.id=a;
+            lf_marker.pose.position.x=left_front.x;
+            lf_marker.pose.position.y=left_front.y;
+            lf_marker.pose.orientation.z=sin(pose.Heading/2);
+            lf_marker.pose.orientation.w=cos(pose.Heading/2);
+            lf_marker.color.g=1;
+            lf_marker.color.b=1;
+            lf_marker.color.a=1.0;
+            lf_marker.scale.x=0.5;
+            lf_marker.scale.y = 0.2;
+            lf_marker.scale.z=1e-6;
+            a++;
+            pub_lf_marker.publish(lf_marker);
+
+            rf_marker.id=b;
+            rf_marker.header.stamp=ros::Time::now();
+            rf_marker.header.frame_id="velodyne";
+            rf_marker.type=visualization_msgs::Marker::CYLINDER;
+            rf_marker.action = visualization_msgs::Marker::ADD;
+            rf_marker.pose.position.x=right_front.x;
+            rf_marker.pose.position.y=right_front.y;
+            rf_marker.pose.orientation.z=sin(pose.Heading/2);
+            rf_marker.pose.orientation.w=cos(pose.Heading/2);
+            rf_marker.color.g=1;
+            rf_marker.color.b=1;
+            rf_marker.color.a=1.0;
+            rf_marker.scale.x=0.5;
+            rf_marker.scale.y = 0.2;
+            rf_marker.scale.z=1e-6;
+            b++;
+            pub_rf_marker.publish(rf_marker);
+
+            
+        }
+     
         double searchPoint()
         {
             pcl::PointXY Point;
@@ -558,7 +687,6 @@ class Prediction{
             }
             return thet;
         }
-
 };
 
 int main(int argc, char **argv)
